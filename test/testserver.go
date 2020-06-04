@@ -63,7 +63,7 @@ type nodeManager struct {
 func newNodeManager() *nodeManager {
 	nm := new(nodeManager)
 	nm.nodes = map[uint64]int{1: 1, 2: 1, 3: 1}
-	nm.allAddrs = map[uint64]replAddr{1: {heart: "127.0.0.1:8000", repl: "127.0.0.1:9000"}, 2: {heart: "127.0.0.1:8001", repl: "127.0.0.1:9001"}, 3: {heart: "127.0.0.1:8002", repl: "127.0.0.1:9002"}, 4: {heart: "127.0.0.1:8003", repl: "127.0.0.1:9003"}}
+	nm.allAddrs = map[uint64]replAddr{1: {heart: "127.0.0.1:8000", repl: "127.0.0.1:9000"}, 2: {heart: "127.0.0.1:8001", repl: "127.0.0.1:9001"}, 3: {heart: "127.0.0.1:8004", repl: "127.0.0.1:9004"}, 4: {heart: "127.0.0.1:8003", repl: "127.0.0.1:9003"}}
 	return nm
 }
 

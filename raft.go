@@ -496,6 +496,19 @@ func (s *raft) proposeMemberChange(cc *proto.ConfChange, future *Future) {
 	}
 }
 
+func (s *raft) proposeResetPeers(rp *proto.ResetPeers, future *Future) {
+
+	pr := pool.getProposal()
+	pr.cmdType = proto.EntryResetPeers
+	pr.future = future
+	pr.data = rp.Encode()
+
+	select {
+	case <-s.stopc:
+		future.respond(nil, ErrStopped)
+	case s.propc <- pr:
+	}
+}
 func (s *raft) reciveMessage(m *proto.Message) {
 	if s.restoringSnapshot.Get() {
 		return

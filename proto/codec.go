@@ -23,6 +23,7 @@ import (
 
 const (
 	version1        byte   = 1
+	peer_num        uint64 = 2
 	peer_size       uint64 = 11
 	entry_header    uint64 = 17
 	snapmeta_header uint64 = 20
@@ -75,6 +76,40 @@ func (c *ConfChange) Decode(datas []byte) {
 	c.Peer.Decode(datas[1:])
 	if uint64(len(datas)) > peer_size+1 {
 		c.Context = append([]byte{}, datas[peer_size+1:]...)
+	}
+}
+
+// ResetPeers codec
+func (r *ResetPeers) Encode() []byte {
+	datas := make([]byte, peer_num+peer_size*uint64(len(r.NewPeers))+uint64(len(r.Context)))
+	binary.BigEndian.PutUint16(datas[0:], uint16(len(r.NewPeers)))
+	start := peer_num
+	if len(r.NewPeers) > 0 {
+		for _, peer := range r.NewPeers {
+			peer.Encode(datas[start:])
+			start = start + peer_size
+		}
+	}
+	if len(r.Context) > 0 {
+		copy(datas[start:], r.Context)
+	}
+	return datas
+}
+
+func (r *ResetPeers) Decode(datas []byte) {
+	newPeersSize := binary.BigEndian.Uint16(datas[0:peer_num])
+	start := peer_num
+	if newPeersSize > 0 {
+		for i := uint16(0); i < newPeersSize; i++ {
+			peer := new(Peer)
+			peer.Decode(datas[start : start+peer_size])
+			r.NewPeers = append(r.NewPeers, *peer)
+			start = start + peer_size
+		}
+	}
+
+	if uint64(len(datas)) > start {
+		r.Context = append([]byte{}, datas[start:]...)
 	}
 }
 

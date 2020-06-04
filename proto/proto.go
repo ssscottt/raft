@@ -51,6 +51,7 @@ const (
 
 	EntryNormal     EntryType = 0
 	EntryConfChange EntryType = 1
+	EntryResetPeers EntryType = 2
 
 	PeerNormal  PeerType = 0
 	PeerArbiter PeerType = 1
@@ -127,6 +128,11 @@ type ConfChange struct {
 	Context []byte
 }
 
+type ResetPeers struct {
+	NewPeers []Peer
+	Context  []byte
+}
+
 type HeartbeatContext []uint64
 
 func (t MsgType) String() string {
@@ -173,6 +179,8 @@ func (t EntryType) String() string {
 		return "EntryNormal"
 	case 1:
 		return "EntryConfChange"
+	case 2:
+		return "EntryResetPeers"
 	}
 	return "unkown"
 }
