@@ -273,6 +273,7 @@ func (r *raftFsm) applyConfChange(cc *proto.ConfChange) {
 }
 
 func (r *raftFsm) applyResetPeer(rp *proto.ResetPeers) {
+	r.reset(r.term+1, 0, false)
 	if r.state == stateLeader {
 		logger.Warn("raft[%v] ignore reset peers in case of leader exists", r.id)
 	}

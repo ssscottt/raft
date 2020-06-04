@@ -157,7 +157,7 @@ func TestMemberWithLease(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 }
 
-func TestResetPeers(t *testing.T) {
+func TestMemberWithLeaseRemoveBeforeAdd(t *testing.T) {
 	f, w := getLogFile("changemember_lease.log")
 	defer func() {
 		w.Flush()
@@ -169,24 +169,106 @@ func TestResetPeers(t *testing.T) {
 	leadServer := waitElect(servers, w)
 	printStatus(servers, w)
 
-	var newServers []*testServer
-	for index, s := range servers {
-		if index == 2 {
-			newServers = append(newServers, s)
-			break
-		}
-		s.raft.Stop()
+	// test add node
+	w.WriteString(fmt.Sprintf("[%s] Add new node \r\n", time.Now().Format(format_time)))
+	leader, term := leadServer.raft.LeaderTerm(1)
+	newServer := createRaftServer(4, leader, term, peers, true, true)
+	// add node
+	resolver.addNode(4, 0)
+	fmt.Println("starting add node")
+	leadServer.sm.AddNode(proto.Peer{ID: 4})
+	fmt.Println("added node")
+	time.Sleep(time.Second)
+	servers = append(servers, newServer)
+	printStatus(servers, w)
+
+	fmt.Println("starting put data")
+	if err := leadServer.sm.Put("test2", "test2_val"); err != nil {
+		t.Fatal(err)
 	}
-	newPeers := []proto.Peer{{ID: 1}}
-	if err := newServers[0].sm.ResetPeers(newPeers); err != nil {
-		fmt.Printf("reset peer test error, err[%v]", err)
+	time.Sleep(time.Second)
+	if vget, err := newServer.sm.Get("test2"); err != nil || vget != "test2_val" {
+		t.Fatal("new add node not get the data")
+	}
+	fmt.Println("success put data")
+
+	// test remove node
+	w.WriteString(fmt.Sprintf("[%s] Remove node \r\n", time.Now().Format(format_time)))
+	fmt.Println("starting remove node")
+	leadServer.sm.RemoveNode(proto.Peer{ID: 4})
+	fmt.Println("removed node")
+	fmt.Println("starting put data")
+	if err := leadServer.sm.Put("test3", "test3_val"); err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println("success put data")
+	newServers := make([]*testServer, 0)
+	for _, s := range servers {
+		if s.nodeID == newServer.nodeID {
+			s.raft.Stop()
+		} else {
+			newServers = append(newServers, s)
+		}
+	}
+	servers = newServers
+	time.Sleep(100 * time.Millisecond)
+	newServer = createRaftServer(4, 0, 10, append(peers, proto.Peer{ID: 4}), false, false)
+	servers = append(servers, newServer)
+	time.Sleep(10 * time.Second)
+	printStatus(servers, w)
+	resolver.delNode(4)
+
+	for _, s := range servers {
+		s.raft.Stop()
 	}
 
 	time.Sleep(100 * time.Millisecond)
+}
+
+func TestResetPeersWithLease(t *testing.T) {
+	f, w := getLogFile("reset_peers_lease.log")
+	defer func() {
+		w.Flush()
+		f.Close()
+	}()
+	peers = []proto.Peer{{ID: 1}, {ID: 2}, {ID: 3}, {ID: 4}, {ID: 5}, {ID: 6}, {ID: 7}}
+	servers := initTestServer(peers, true, true)
+	fmt.Println("waiting electing leader....")
+	leadServer := waitElect(servers, w)
+	printStatus(servers, w)
+
+	var newServers []*testServer
+	for index, s := range servers {
+		if index > 3 {
+			newServers = append(newServers, s)
+			continue
+		}
+		s.raft.Stop()
+	}
+
+	newPeers := []proto.Peer{{ID: 5}, {ID: 6}, {ID: 7}}
+	if len(newServers) > 0 {
+		for _, ns := range newServers {
+			go func(ns *testServer) {
+				if err := ns.sm.ResetPeers(newPeers); err != nil {
+					fmt.Printf("reset peer test error, err[%v]", err)
+				}
+			}(ns)
+		}
+
+	} else {
+		fmt.Printf("no new peers")
+		return
+	}
+
+	leadServer = waitElect(newServers, w)
+
 	// test add node
-	w.WriteString(fmt.Sprintf("[%s] Add new node after reset peers \r\n", time.Now().Format(format_time)))
+	if _, err := w.WriteString(fmt.Sprintf("[%s] Add new node after reset peers \r\n", time.Now().Format(format_time))); err != nil {
+		fmt.Printf("write string error, err[%v]", err)
+	}
 	leader, term := leadServer.raft.LeaderTerm(1)
-	newServer := createRaftServer(4, leader, term, peers, true, true)
+	newServer := createRaftServer(4, leader, term, newPeers, true, true)
 	// add node
 	resolver.addNode(4, 0)
 	fmt.Println("starting add node")

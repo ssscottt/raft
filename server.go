@@ -205,6 +205,7 @@ func (rs *RaftServer) ResetMember(id uint64, peers []proto.Peer, context []byte)
 	}
 
 	raft.raftFsm.applyResetPeer(&proto.ResetPeers{NewPeers: peers, Context: context})
+	raft.peerState.replace(peers)
 	return nil
 }
 

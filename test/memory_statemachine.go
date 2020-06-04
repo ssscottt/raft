@@ -156,12 +156,9 @@ func (ms *memoryStatemachine) RemoveNode(peer proto.Peer) error {
 	}
 	return nil
 }
-func (ms *memoryStatemachine) ResetPeers(peers []proto.Peer) error {
-	err := ms.raft.ResetMember(ms.id, peers, nil)
-	if err != nil {
-		return errors.New("reset peers error")
-	}
-	return nil
+func (ms *memoryStatemachine) ResetPeers(peers []proto.Peer) (err error) {
+	err = ms.raft.ResetMember(ms.id, peers, nil)
+	return
 }
 func (ms *memoryStatemachine) setApplied(index uint64) {
 	ms.Lock()
